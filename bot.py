@@ -1,7 +1,7 @@
 import requests
 
 # আপনার বর্তমান টোকেন এবং চ্যাট আইডি
-TELEGRAM_TOKEN = "8790408553:AAHoAPWtiVlgl5FsuDcvQnB0bTD3RHc_IxY"
+TELEGRAM_TOKEN = "8922634614:AAFDphqbsgmE_4-1NQQ4ZeRD7AyqPrS5YGI"
 CHAT_ID = "8637317407"
 
 print("Sending test message to Telegram...")
