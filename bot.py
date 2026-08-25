@@ -36,9 +36,17 @@ def check_market():
     print("Binance connection error:", e)
     return
 
-  if not data or not isinstance(data, list) or len(data) < 20:
-    print("Data not available or empty, waiting...")
-    return
+    if not data or not isinstance(data, list) or len(data) < 20:
+    print("Data not available, retrying once...")
+    import time
+
+    time.sleep(3)
+    response = requests.get(url, timeout=10)
+    data = response.json()
+    if not data or not isinstance(data, list) or len(data) < 20:
+      print("Data still empty, waiting for next schedule.")
+      return
+      
 
   # Extracting candles
   closes = [float(candle[4]) for candle in data]
