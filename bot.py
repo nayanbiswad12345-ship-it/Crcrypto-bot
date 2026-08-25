@@ -127,6 +127,9 @@ def check_market():
 
 if __name__ == "__main__":
     print("Running market check...")
-    send_telegram_message("🚀 *Test Alert:* Bot is connected and working perfectly!")
+    # Send test message first so it guarantees delivery
+    send_telegram_message("🚀 Test Alert: Bot is connected and working perfectly!")
+    # Then run the strategy check
     check_market()
+    
       
