@@ -26,10 +26,17 @@ def calculate_ema(prices, length):
 
 
 def check_market():
-  # Fetching last 30 candles from Binance for proper EMA calculation
-  url = f"https://api.binance.com/api/v3/klines?symbol={SYMBOL}&interval={INTERVAL}&limit=30"
-  response = requests.get(url)
-  data = response.json()
+    # Fetching last 30 candles from Binance with a 10-second timeout to prevent hanging
+  url = (
+      f"https://api.binance.com/api/v3/klines?symbol={SYMBOL}&interval={INTERVAL}&limit=30"
+  )
+  try:
+    response = requests.get(url, timeout=10)
+    data = response.json()
+  except Exception as e:
+    print("Binance connection error:", e)
+    return
+    
 
   # Safety check to prevent index out of range errors if data is empty
   if not data or not isinstance(data, list) or len(data) < 20:
