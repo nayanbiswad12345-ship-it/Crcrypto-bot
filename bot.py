@@ -3,7 +3,7 @@ import time
 import requests
 
 # Configuration
-TELEGRAM_TOKEN = os.getenv("TELEGRAM_TOKEN")
+TELEGRAM_TOKEN = "8790408553:AAGSqfM_QCW_68ha2sOWDQkRaxPaKU8YWI8"
 CHAT_ID = "8637317407"
 SYMBOL = "BTCUSDT"
 INTERVAL = "5m"
