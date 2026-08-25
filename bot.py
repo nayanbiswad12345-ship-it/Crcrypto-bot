@@ -123,10 +123,12 @@ def check_market():
 
 
 if __name__ == "__main__":
-  print("Running market check...")
+  print("Starting market check script...")
   try:
     check_market()
+    print("Market check completed successfully!")
   except Exception as e:
-    print("Error:", e)
+    print("Fatal Error in main:", e)
+    
     
   
