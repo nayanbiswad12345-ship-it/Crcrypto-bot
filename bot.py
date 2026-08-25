@@ -127,4 +127,8 @@ def check_market():
 if __name__ == "__main__":
     print("Running market check...")
     check_market()
-  
+if __name__ == "__main__":
+    print("Running market check...")
+    send_telegram_message("🚀 *Test Alert:* Bot is connected and working perfectly!")
+    check_market()
+      
