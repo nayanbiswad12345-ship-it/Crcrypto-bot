@@ -115,11 +115,11 @@ def check_market():
     )
 
 
-print("Advanced EMA & Rejection/Engulfing Bot is running...")
-while True:
+if __name__ == "__main__":
+  print("Running market check...")
   try:
     check_market()
   except Exception as e:
     print("Error:", e)
-  time.sleep(60)
+    
   
