@@ -12,8 +12,10 @@ INTERVAL = "5m"
 def send_telegram_message(message):
     try:
         url = f"https://api.telegram.org/bot{TELEGRAM_TOKEN}/sendMessage"
-        payload = {"chat_id": CHAT_ID, "text": message, "parse_mode": "Markdown"}
-        requests.post(url, json=payload, timeout=5)
+        payload = {"chat_id": CHAT_ID, "text": message}
+        response = requests.post(url, json=payload, timeout=5)
+        print("Telegram response:", response.text)
+        
         print("Telegram message sent successfully.")
     except Exception as e:
         print("Telegram error:", e)
