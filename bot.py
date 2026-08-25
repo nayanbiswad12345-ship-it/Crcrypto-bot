@@ -32,8 +32,7 @@ def check_market():
     except Exception as e:
         print("Binance connection error:", e)
         return
-
-         if not data or not isinstance(data, list) or len(data) < 20:
+        if not data or not isinstance(data, list) or len(data) < 20:
         print("Data not available, retrying once...")
         time.sleep(3)
         try:
