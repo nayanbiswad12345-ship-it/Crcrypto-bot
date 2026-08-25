@@ -36,15 +36,18 @@ def check_market():
   except Exception as e:
     print("Binance connection error:", e)
     return
-
-      if not data or not isinstance(data, list) or len(data) < 20:
-      print("Data not available, retrying once...")
-      time.sleep(3)
+  if not data or not isinstance(data, list) or len(data) < 20:
+    print("Data not available, retrying once...")
+    time.sleep(3)
+    try:
       response = requests.get(url, timeout=10)
       data = response.json()
-      if not data or not isinstance(data, list) or len(data) < 20:
-        print("Data still empty, waiting for next schedule.")
-        return
+    except Exception:
+      pass
+
+    if not data or not isinstance(data, list) or len(data) < 20:
+      print("Data still empty, waiting for next schedule.")
+      return
          
   # Extracting candles
   closes = [float(candle[4]) for candle in data]
