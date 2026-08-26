@@ -1,4 +1,5 @@
 import os
+import time
 import requests
 
 # Configuration
@@ -24,8 +25,12 @@ def calculate_ema(prices, length):
 
 def check_market():
     print("Fetching market data from Delta Exchange...")
-    # Using Delta Exchange public product candles endpoint for BTC (symbol format: BTC)
-    url = f"https://api.india.delta.exchange/v2/history/candles?resolution={RESOLUTION}&symbol=BTC&limit=50"
+    
+    end_time = int(time.time())
+    start_time = end_time - (50 * 5 * 60) # Last 50 candles of 5 minutes
+    
+    url = f"https://api.india.delta.exchange/v2/history/candles?resolution={RESOLUTION}&symbol=BTC&start={start_time}&end={end_time}"
+    
     try:
         response = requests.get(url, timeout=10)
         print("API Status Code:", response.status_code)
@@ -109,5 +114,7 @@ def check_market():
 
 if __name__ == "__main__":
     print("Running Delta Exchange market check...")
+    # Sending startup test message
+    send_telegram_message("🤖 *Crypto Bot Started Successfully!*\nDelta Exchange 5m BTC Strategy is active.")
     check_market()
     
