@@ -2,10 +2,10 @@ import os
 import requests
 
 # Configuration
-TELEGRAM_TOKEN = "8922634614:AAFDphqbsgmE_4-1NQQ4ZeRD7AyqPrS5YGI"
+TELEGRAM_TOKEN = "8922634614:AAFDphqbsgmE_4-1NQQ4ZeRD7Ay qPrS5YGI"
 CHAT_ID = "8637317407"
-SYMBOL = "BTCUSDT"
-INTERVAL = "5m"
+SYMBOL = "BTCUSD"
+RESOLUTION = "5m"
 
 def send_telegram_message(message):
     try:
@@ -13,10 +13,6 @@ def send_telegram_message(message):
         payload = {"chat_id": CHAT_ID, "text": message, "parse_mode": "Markdown"}
         response = requests.post(url, json=payload, timeout=5)
         print("Telegram response:", response.text)
-        if response.status_code == 200:
-            print("Telegram message sent successfully!")
-        else:
-            print("Failed to send telegram message.")
     except Exception as e:
         print("Telegram error:", e)
 
@@ -28,39 +24,48 @@ def calculate_ema(prices, length):
     return ema_list
 
 def check_market():
-    print("Fetching market data from Binance...")
-    url = f"https://api.binance.com/api/v3/klines?symbol={SYMBOL}&interval={INTERVAL}&limit=50"
+    print("Fetching market data from Delta Exchange...")
+    url = f"https://api.delta.exchange/v2/history/candles?resolution={RESOLUTION}&symbol={SYMBOL}&limit=50"
     try:
         response = requests.get(url, timeout=10)
-        data = response.json()
+        result = response.json()
+        data = result.get("result", [])
     except Exception as e:
-        print("Binance connection error:", e)
+        print("Delta Exchange connection error:", e)
         return
 
     if not data or not isinstance(data, list) or len(data) < 20:
         print("Data not available or empty, waiting...")
         return
 
-    # Extracting candles
-    closes = [float(candle[4]) for candle in data]
-    highs = [float(candle[2]) for candle in data]
-    lows = [float(candle[3]) for candle in data]
-    opens = [float(candle[1]) for candle in data]
+    data = sorted(data, key=lambda x: x['time'] if isinstance(x, dict) else x[0])
+
+    if isinstance(data[0], dict):
+        opens = [float(c['open']) for c in data]
+        highs = [float(c['high']) for c in data]
+        lows = [float(c['low']) for c in data]
+        closes = [float(c['close']) for c in data]
+    else:
+        opens = [float(c[1]) for c in data]
+        highs = [float(c[2]) for c in data]
+        lows = [float(c[3]) for c in data]
+        closes = [float(c[4]) for c in data]
 
     # Calculate EMA 9 and EMA 15
     ema9_list = calculate_ema(closes, 9)
     ema15_list = calculate_ema(closes, 15)
 
-    # Analyzing the latest confirmed closed candle (index -2)
-    c = closes[-2]
-    h = highs[-2]
-    l = lows[-2]
-    o = opens[-2]
-    prev_c = closes[-3]
-    prev_o = opens[-3]
+    # Analyzing the latest completely closed candle (index -1)
+    o = opens[-1]
+    h = highs[-1]
+    l = lows[-1]
+    c = closes[-1]
+    
+    prev_o = opens[-2]
+    prev_c = closes[-2]
 
-    e9 = ema9_list[-2]
-    e15 = ema15_list[-2]
+    e9 = ema9_list[-1]
+    e15 = ema15_list[-1]
 
     body_size = abs(c - o)
     candle_range = h - l
@@ -70,65 +75,48 @@ def check_market():
     lower_wick = min(o, c) - l
     upper_wick = h - max(o, c)
 
-    # Touch Conditions
-    touch_ema9_b = (l <= e9 and h >= e9) or (abs(l - e9) <= candle_range * 0.5)
-    touch_ema15_b = (l <= e15 and h >= e15) or (abs(l - e15) <= candle_range * 0.5)
-    touching_bull = touch_ema9_b or touch_ema15_b
+    # Relaxed touch condition: checking if EMA is anywhere within the candle's high-low range
+    touch_ema9 = (l <= e9 <= h)
+    touch_ema15 = (l <= e15 <= h)
+    touching_ema = touch_ema9 or touch_ema15
 
-    touch_ema9_s = (h >= e9 and l <= e9) or (abs(h - e9) <= candle_range * 0.5)
-    touch_ema15_s = (h >= e15 and l <= e15) or (abs(l - e15) <= candle_range * 0.5)
-    touching_bear = touch_ema9_s or touch_ema15_s
+    # Trend filter
+    is_uptrend = c > e9 or c > e15
+    is_downtrend = c < e9 or c < e15
 
-    # 1. Bullish Rejection
-    is_bull_pin = (
-        (lower_wick >= 2 * body_size)
-        and (upper_wick <= body_size)
-        and (candle_range > 0)
-    )
-    bullish_rejection = is_bull_pin and touching_bull and (c > o)
+    # 1. Bullish Rejection (Hammer / Pinbar touching EMA with lower wick)
+    is_hammer = (lower_wick >= body_size * 1.2) and (c > o)
+    bullish_rejection = is_hammer and touching_ema
 
-    # 2. Bullish Engulfing
+    # 2. Bearish Rejection (Shooting Star touching EMA with upper wick)
+    is_shooting_star = (upper_wick >= body_size * 1.2) and (c < o)
+    bearish_rejection = is_shooting_star and touching_ema
+
+    # 3. Bullish Engulfing
     is_green = c > o
     prev_is_red = prev_c < prev_o
-    bullish_engulf = (c >= prev_o) and (o <= prev_c)
-    bullish_engulfing = is_green and prev_is_red and bullish_engulf and touching_bull
-
-    # 3. Bearish Rejection
-    is_bear_pin = (
-        (upper_wick >= 2 * body_size)
-        and (lower_wick <= body_size)
-        and (candle_range > 0)
-    )
-    bearish_rejection = is_bear_pin and touching_bear and (c < o)
+    is_engulfing_size = (c >= prev_o) and (o <= prev_c)
+    bullish_engulfing = is_green and prev_is_red and is_engulfing_size and touching_ema
 
     # 4. Bearish Engulfing
     is_red = c < o
     prev_is_green = prev_c > prev_o
-    bearish_engulf = (c <= prev_o) and (o >= prev_c)
-    bearish_engulfing = is_red and prev_is_green and bearish_engulf and touching_bear
+    is_bear_engulf_size = (c <= prev_o) and (o >= prev_c)
+    bearish_engulfing = is_red and prev_is_green and is_bear_engulf_size and touching_ema
 
-    # Send Telegram Alerts
+    # Send Telegram Alerts immediately upon candle close
     if bullish_rejection:
-        send_telegram_message(
-            f"🚀 *BTC 5m: Bullish Rejection*\nPrice: {c}\nTouched EMA 9/15 (UP)"
-        )
+        send_telegram_message(f"🚀 *Delta BTC 5m: Bullish Rejection*\nPrice: {c}\nLower wick touched EMA 9/15 (UP)")
     elif bullish_engulfing:
-        send_telegram_message(
-            f"🟢 *BTC 5m: Bullish Engulfing*\nPrice: {c}\nTouched EMA 9/15 (UP)"
-        )
+        send_telegram_message(f"🟢 *Delta BTC 5m: Bullish Engulfing*\nPrice: {c}\nEngulfed near EMA 9/15 (UP)")
     elif bearish_rejection:
-        send_telegram_message(
-            f"📉 *BTC 5m: Bearish Rejection*\nPrice: {c}\nTouched EMA 9/15 (DOWN)"
-        )
+        send_telegram_message(f"📉 *Delta BTC 5m: Bearish Rejection*\nPrice: {c}\nUpper wick touched EMA 9/15 (DOWN)")
     elif bearish_engulfing:
-        send_telegram_message(
-            f"🔴 *BTC 5m: Bearish Engulfing*\nPrice: {c}\nTouched EMA 9/15 (DOWN)"
-        )
+        send_telegram_message(f"🔴 *Delta BTC 5m: Bearish Engulfing*\nPrice: {c}\nEngulfed near EMA 9/15 (DOWN)")
     else:
-        print("Market checked. No signal matched current conditions.")
+        print("Market checked. No active signal on the closed candle.")
 
 if __name__ == "__main__":
-    print("Running market check...")
-    send_telegram_message("🚀 Test Alert: Bot is connected and strategy is active!")
+    print("Running Delta Exchange market check...")
     check_market()
     
