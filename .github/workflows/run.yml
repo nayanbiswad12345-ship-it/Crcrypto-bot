@@ -1,6 +1,8 @@
 name: Run Crypto Bot
 
 on:
+  schedule:
+    - cron: '*/5 * * * *'
   workflow_dispatch: # Allows manual run
 
 jobs:
@@ -20,3 +22,4 @@ jobs:
 
       - name: Run bot script
         run: python bot.py
+        
